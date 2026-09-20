@@ -1,19 +1,27 @@
-# =============================================================================
-# web (React + Vite) — DELIBERATELY NAIVE image running the Vite DEV server.
-# It works and hot-reloads, but it is NOT how you ship a frontend.
-#
-# TODO (student): this is prime hardening/optimization territory.
-#   - [ ] Multi-stage build: `vite build` in a builder stage, then serve the
-#         static `dist/` from a tiny web server (nginx:alpine or similar).
-#   - [ ] Do not ship the dev server or node_modules to production.
-#   - [ ] Non-root, pinned base, .dockerignore.
-#   - Done when: the final image serves prebuilt static assets and is a fraction
-#     of this image's size.
-# =============================================================================
-FROM node:20
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS builder
+
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
 COPY . .
-EXPOSE 5173
-CMD ["npm", "run", "dev"]
+
+ARG VITE_API_BASE=http://localhost:8080
+ENV VITE_API_BASE=$VITE_API_BASE
+
+RUN npm run build
+
+FROM nginx:alpine-slim@sha256:80149a0e5bc9fa0b8beaff5b8a453f71ba8ba038895d418381297ffa5cd57782
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+RUN sed -i 's#^[[:space:]]*pid[[:space:]].*;#pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf \
+    && chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx
+
+USER nginx
+
+EXPOSE 8080
+
+CMD ["nginx", "-g", "daemon off;"]
