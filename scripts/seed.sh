@@ -77,7 +77,7 @@ fi
 say "Got a JWT for the demo user."
 
 # Materialise a small valid 16x16 PNG so the upload -> thumbnail pipeline runs.
-sample="$(mktemp -t cloudvault-sample).png"
+sample="$(mktemp -t cloudvault-sample-XXXXXX).png"
 base64 -d > "$sample" <<'PNG'
 iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGklEQVR42mOw2PvjPyWYYdSAUQNGDRguBgAAdQLsHzKUwskAAAAASUVORK5CYII=
 PNG

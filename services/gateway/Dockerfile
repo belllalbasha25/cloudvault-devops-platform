@@ -1,12 +1,22 @@
-# =============================================================================
-# gateway — DELIBERATELY NAIVE image (works, not production-grade).
-# See services/auth-service/Dockerfile for the full hardening checklist.
-# TODO (student): multi-stage, non-root, slim base, pinned digest, npm ci.
-# =============================================================================
-FROM node:20
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS deps
+
 WORKDIR /app
-COPY package.json ./
-RUN npm install
-COPY . .
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS runtime
+
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY --from=deps --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json ./
+COPY --chown=node:node src ./src
+
+USER node
+
 EXPOSE 8080
-CMD ["npm", "start"]
+
+CMD ["node", "src/index.js"]
